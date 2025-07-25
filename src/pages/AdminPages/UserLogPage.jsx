@@ -33,7 +33,7 @@ const UserLogPage = () => {
     role: 'all',
     search: ''
   });
-  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState({});
 
   /**
    * Load user logs from localStorage
@@ -44,57 +44,62 @@ const UserLogPage = () => {
         // Simulate network delay for realistic UX
         await new Promise(resolve => setTimeout(resolve, 800));
         
-        // Get logs from localStorage or initialize with mock data
-        const storedLogs = localStorage.getItem('userLogs');
+        // Clear localStorage to start fresh (for debugging)
+        localStorage.removeItem('userLogs');
         
-        if (storedLogs) {
-          const parsedLogs = JSON.parse(storedLogs);
-          setLogs(parsedLogs);
-          setFilteredLogs(parsedLogs);
-        } else {
-          // Initialize with mock data if no logs exist
-          const mockLogs = [
-            {
-              id: '1',
-              userId: 'admin-123',
-              username: 'admin@example.com',
-              role: 'admin',
-              action: 'login',
-              loginTime: new Date(Date.now() - 3600000).toISOString(),
-              logoutTime: null,
-              ipAddress: '192.168.1.1',
-              tokenName: 'eyJhbGciOi...'
-            },
-            {
-              id: '2',
-              userId: 'user-456',
-              username: 'user@example.com',
-              role: 'user',
-              action: 'login',
-              loginTime: new Date(Date.now() - 7200000).toISOString(),
-              logoutTime: new Date(Date.now() - 3600000).toISOString(),
-              ipAddress: '192.168.1.2',
-              tokenName: 'eyJhbGciOi...'
-            },
-            {
-              id: '3',
-              userId: 'user-789',
-              username: 'test@example.com',
-              role: 'user',
-              action: 'login',
-              loginTime: new Date(Date.now() - 86400000).toISOString(),
-              logoutTime: new Date(Date.now() - 82800000).toISOString(),
-              ipAddress: '192.168.1.3',
-              tokenName: 'eyJhbGciOi...'
-            }
-          ];
-          
-          // Store mock logs in localStorage
-          localStorage.setItem('userLogs', JSON.stringify(mockLogs));
-          
-          setLogs(mockLogs);
-          setFilteredLogs(mockLogs);
-        }
+        // Initialize with mock data
+        const mockLogs = [
+          {
+            id: '1',
+            userId: 'admin-123',
+            username: 'admin@example.com',
+            role: 'admin',
+            action: 'login',
+            loginTime: new Date(Date.now() - 3600000).toISOString(),
+            logoutTime: null,
+            ipAddress: '192.168.1.1',
+            tokenName: 'eyJhbGciOi...'
+          },
+          {
+            id: '2',
+            userId: 'user-456',
+            username: 'user@example.com',
+            role: 'user',
+            action: 'login',
+            loginTime: new Date(Date.now() - 7200000).toISOString(),
+            logoutTime: new Date(Date.now() - 3600000).toISOString(),
+            ipAddress: '192.168.1.2',
+            tokenName: 'eyJhbGciOi...'
+          },
+          {
+            id: '3',
+            userId: 'user-789',
+            username: 'test@example.com',
+            role: 'user',
+            action: 'login',
+            loginTime: new Date(Date.now() - 86400000).toISOString(),
+            logoutTime: new Date(Date.now() - 82800000).toISOString(),
+            ipAddress: '192.168.1.3',
+            tokenName: 'eyJhbGciOi...'
+          },
+          {
+            id: '4',
+            userId: 'user-101',
+            username: 'demo@example.com',
+            role: 'user',
+            action: 'login',
+            loginTime: new Date(Date.now() - 43200000).toISOString(),
+            logoutTime: new Date(Date.now() - 39600000).toISOString(),
+            ipAddress: '192.168.1.4',
+            tokenName: 'eyJhbGciOi...'
+          }
+        ];
+        
+        // Store mock logs in localStorage
+        localStorage.setItem('userLogs', JSON.stringify(mockLogs));
+        
+        setLogs(mockLogs);
+        setFilteredLogs(mockLogs);
         
         setError(null);
       } catch (err) {
@@ -217,11 +222,17 @@ const UserLogPage = () => {
    * @param {string} logId - ID of the log to delete
    */
   const handleDelete = (logId) => {
+
     // If not confirming, show confirmation first
-    if (deleteConfirm !== logId) {
-      setDeleteConfirm(logId);
+    if (!deleteConfirm[logId]) {
+
+      setDeleteConfirm(prev => {
+        const newState = { ...prev, [logId]: true };
+        return newState;
+      });
       return;
     }
+
     
     // User confirmed deletion
     const updatedLogs = logs.filter(log => log.id !== logId);
@@ -233,15 +244,25 @@ const UserLogPage = () => {
     // Update localStorage
     localStorage.setItem('userLogs', JSON.stringify(updatedLogs));
     
-    // Reset confirmation state
-    setDeleteConfirm(null);
+    // Reset confirmation state for this specific log
+    setDeleteConfirm(prev => {
+      const newState = { ...prev };
+      delete newState[logId];
+      return newState;
+    });
   };
 
   /**
-   * Cancel delete confirmation
+   * Cancel delete confirmation for a specific log
+   * 
+   * @param {string} logId - ID of the log to cancel deletion for
    */
-  const cancelDelete = () => {
-    setDeleteConfirm(null);
+  const cancelDeleteForLog = (logId) => {
+    setDeleteConfirm(prev => {
+      const newState = { ...prev };
+      delete newState[logId];
+      return newState;
+    });
   };
 
   // Loading state
@@ -413,32 +434,34 @@ const UserLogPage = () => {
                     {log.ipAddress}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    {deleteConfirm === log.id ? (
-                      <div className="flex justify-end space-x-2">
+                    {(() => {
+                      return deleteConfirm[log.id] ? (
+                        <div className="flex justify-end space-x-2">
+                          <button
+                            onClick={() => handleDelete(log.id)}
+                            className="text-red-600 hover:text-red-900"
+                            aria-label={`Confirm delete log for ${log.username}`}
+                          >
+                            Confirm
+                          </button>
+                          <button
+                            onClick={() => cancelDeleteForLog(log.id)}
+                            className="text-gray-600 hover:text-gray-900"
+                            aria-label="Cancel delete"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
                         <button
                           onClick={() => handleDelete(log.id)}
                           className="text-red-600 hover:text-red-900"
-                          aria-label={`Confirm delete log for ${log.username}`}
+                          aria-label={`Delete log for ${log.username}`}
                         >
-                          Confirm
+                          <FaTrash aria-hidden="true" />
                         </button>
-                        <button
-                          onClick={cancelDelete}
-                          className="text-gray-600 hover:text-gray-900"
-                          aria-label="Cancel delete"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleDelete(log.id)}
-                        className="text-red-600 hover:text-red-900"
-                        aria-label={`Delete log for ${log.username}`}
-                      >
-                        <FaTrash aria-hidden="true" />
-                      </button>
-                    )}
+                      );
+                    })()}
                   </td>
                 </tr>
               ))
