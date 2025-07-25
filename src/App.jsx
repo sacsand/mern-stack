@@ -47,6 +47,28 @@ import AuthProvider from "./contexts/AuthContext";
 import NotificationProvider from "./contexts/NotificationContext";
 
 /**
+ * Landing Route Guard Component
+ * 
+ * Checks if user is authenticated. If not, redirects to login page.
+ * If authenticated, shows the landing page.
+ */
+const LandingRouteGuard = () => {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  
+  // Check if user is authenticated
+  const authenticated = isAuthenticated || !!localStorage.getItem("token");
+  
+  // If not authenticated, redirect to login
+  if (!authenticated) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+  
+  // If authenticated, show landing page
+  return <Landing />;
+};
+
+/**
  * Protected Route Component
  * 
  * Higher-order component that protects routes requiring authentication.
@@ -100,8 +122,10 @@ function App() {
             
             <main className="flex-grow">
               <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<Landing />} />
+                {/* Landing Route - Now protected */}
+                <Route path="/" element={<LandingRouteGuard />} />
+                
+                {/* Public Auth Routes */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
